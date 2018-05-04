@@ -119,6 +119,9 @@ class IdeaPluginTest extends AbstractProjectBuilderSpec {
         applyPluginToProjects()
         project.apply(plugin: 'java')
 
+        // FIXME: Force realize this task
+        project.getTasks().getByName("ideaModule")  // Force realizing this task
+
         then:
         project.idea.project.languageLevel.level == new IdeaLanguageLevel(project.sourceCompatibility).level
 

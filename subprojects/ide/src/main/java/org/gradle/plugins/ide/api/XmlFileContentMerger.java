@@ -55,7 +55,7 @@ public class XmlFileContentMerger extends FileContentMerger {
      * @param closure The closure to execute when the XML has been created.
      */
     public void withXml(Closure closure) {
-        xmlTransformer.addAction(closure);
+        getXmlTransformer().addAction(closure);
     }
 
     /**
@@ -67,6 +67,6 @@ public class XmlFileContentMerger extends FileContentMerger {
      */
     @Incubating
     public void withXml(Action<? super XmlProvider> action) {
-        xmlTransformer.addAction(action);
+        getXmlTransformer().addAction(action);
     }
 }
