@@ -971,6 +971,9 @@ public abstract class AbstractGradleExecuter implements GradleExecuter {
 
         properties.put(CommandLineActionFactory.WELCOME_MESSAGE_ENABLED_SYSTEM_PROPERTY, Boolean.toString(renderWelcomeMessage));
 
+        // temporarily for debugging
+        properties.put("org.gradle.logging.level", "info");
+
         return properties;
     }
 
