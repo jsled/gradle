@@ -42,6 +42,7 @@ import org.gradle.api.internal.artifacts.repositories.resolver.DependencyConstra
 import org.gradle.api.internal.artifacts.repositories.resolver.DirectDependencyMetadataImpl;
 import org.gradle.api.internal.attributes.AttributeContainerInternal;
 import org.gradle.api.internal.attributes.ImmutableAttributesFactory;
+import org.gradle.api.internal.changedetection.state.isolation.IsolatableFactory;
 import org.gradle.api.internal.notations.DependencyMetadataNotationParser;
 import org.gradle.api.internal.notations.ModuleIdentifierNotationConverter;
 import org.gradle.api.internal.project.ProjectInternal;
@@ -50,7 +51,7 @@ import org.gradle.api.specs.Specs;
 import org.gradle.internal.component.external.model.IvyModuleResolveMetadata;
 import org.gradle.internal.component.external.model.ModuleComponentResolveMetadata;
 import org.gradle.internal.component.external.model.MutableModuleComponentResolveMetadata;
-import org.gradle.internal.reflect.InstantiatingAction;
+import org.gradle.internal.action.InstantiatingAction;
 import org.gradle.internal.reflect.Instantiator;
 import org.gradle.internal.resolve.ModuleVersionResolveException;
 import org.gradle.internal.rules.DefaultRuleActionAdapter;
@@ -70,8 +71,6 @@ import java.util.Set;
 public class DefaultComponentMetadataHandler implements ComponentMetadataHandler, ComponentMetadataProcessor {
     private static final String ADAPTER_NAME = ComponentMetadataHandler.class.getSimpleName();
     private static final List<Class<?>> VALIDATOR_PARAM_LIST = Collections.<Class<?>>singletonList(IvyModuleDescriptor.class);
-    private static final Object[] NO_PARAMS = new Object[0];
-
     private static final String INVALID_SPEC_ERROR = "Could not add a component metadata rule for module '%s'.";
 
     private final Instantiator instantiator;
@@ -82,12 +81,14 @@ public class DefaultComponentMetadataHandler implements ComponentMetadataHandler
     private final NotationParser<Object, DirectDependencyMetadataImpl> dependencyMetadataNotationParser;
     private final NotationParser<Object, DependencyConstraintMetadataImpl> dependencyConstraintMetadataNotationParser;
     private final ImmutableAttributesFactory attributesFactory;
+    private final IsolatableFactory isolatableFactory;
 
     DefaultComponentMetadataHandler(Instantiator instantiator,
                                            RuleActionAdapter ruleActionAdapter,
                                            ImmutableModuleIdentifierFactory moduleIdentifierFactory,
                                            Interner<String> stringInterner,
-                                           ImmutableAttributesFactory attributesFactory) {
+                                           ImmutableAttributesFactory attributesFactory,
+                                           IsolatableFactory isolatableFactory) {
         this.instantiator = instantiator;
         this.ruleActionAdapter = ruleActionAdapter;
         this.moduleIdentifierNotationParser = NotationParserBuilder
@@ -97,10 +98,11 @@ public class DefaultComponentMetadataHandler implements ComponentMetadataHandler
         this.dependencyMetadataNotationParser = DependencyMetadataNotationParser.parser(instantiator, DirectDependencyMetadataImpl.class, stringInterner);
         this.dependencyConstraintMetadataNotationParser = DependencyMetadataNotationParser.parser(instantiator, DependencyConstraintMetadataImpl.class, stringInterner);
         this.attributesFactory = attributesFactory;
+        this.isolatableFactory = isolatableFactory;
     }
 
-    public DefaultComponentMetadataHandler(Instantiator instantiator, ImmutableModuleIdentifierFactory moduleIdentifierFactory, Interner<String> stringInterner, ImmutableAttributesFactory attributesFactory) {
-        this(instantiator, createAdapter(), moduleIdentifierFactory, stringInterner, attributesFactory);
+    public DefaultComponentMetadataHandler(Instantiator instantiator, ImmutableModuleIdentifierFactory moduleIdentifierFactory, Interner<String> stringInterner, ImmutableAttributesFactory attributesFactory, IsolatableFactory isolatableFactory) {
+        this(instantiator, createAdapter(), moduleIdentifierFactory, stringInterner, attributesFactory, isolatableFactory);
     }
 
     private static RuleActionAdapter createAdapter() {
@@ -177,26 +179,26 @@ public class DefaultComponentMetadataHandler implements ComponentMetadataHandler
 
     @Override
     public ComponentMetadataHandler all(Class<? extends ComponentMetadataRule> rule) {
-        return addClassBasedRule(createAllSpecRuleAction(ruleActionAdapter.createFromAction(new InstantiatingAction<ComponentMetadataContext>(rule, NO_PARAMS, instantiator, new ExceptionHandler()))));
+        return addClassBasedRule(createAllSpecRuleAction(ruleActionAdapter.createFromAction(new InstantiatingAction<ComponentMetadataContext>(rule, InstantiatingAction.NO_PARAMS, instantiator, new ExceptionHandler()))));
     }
 
     @Override
     public ComponentMetadataHandler all(Class<? extends ComponentMetadataRule> rule, Action<? super ActionConfiguration> configureAction) {
         DefaultActionConfiguration configuration = new DefaultActionConfiguration();
         configureAction.execute(configuration);
-        return addClassBasedRule(createAllSpecRuleAction(ruleActionAdapter.createFromAction(new InstantiatingAction<ComponentMetadataContext>(rule, configuration.getParams(), instantiator, new ExceptionHandler()))));
+        return addClassBasedRule(createAllSpecRuleAction(ruleActionAdapter.createFromAction(new InstantiatingAction<ComponentMetadataContext>(rule, isolatableFactory.isolate(configuration.getParams()), instantiator, new ExceptionHandler()))));
     }
 
     @Override
     public ComponentMetadataHandler withModule(Object id, Class<? extends ComponentMetadataRule> rule) {
-        return addClassBasedRule(createSpecRuleContextActionForModule(id, ruleActionAdapter.createFromAction(new InstantiatingAction<ComponentMetadataContext>(rule, NO_PARAMS, instantiator, new ExceptionHandler()))));
+        return addClassBasedRule(createSpecRuleContextActionForModule(id, ruleActionAdapter.createFromAction(new InstantiatingAction<ComponentMetadataContext>(rule, InstantiatingAction.NO_PARAMS, instantiator, new ExceptionHandler()))));
     }
 
     @Override
     public ComponentMetadataHandler withModule(Object id, Class<? extends ComponentMetadataRule> rule, Action<? super ActionConfiguration> configureAction) {
         DefaultActionConfiguration configuration = new DefaultActionConfiguration();
         configureAction.execute(configuration);
-        return addClassBasedRule(createSpecRuleContextActionForModule(id, ruleActionAdapter.createFromAction(new InstantiatingAction<ComponentMetadataContext>(rule, configuration.getParams(), instantiator, new ExceptionHandler()))));
+        return addClassBasedRule(createSpecRuleContextActionForModule(id, ruleActionAdapter.createFromAction(new InstantiatingAction<ComponentMetadataContext>(rule, isolatableFactory.isolate(configuration.getParams()), instantiator, new ExceptionHandler()))));
     }
 
     public ModuleComponentResolveMetadata processMetadata(ModuleComponentResolveMetadata metadata) {

@@ -14,17 +14,40 @@
  * limitations under the License.
  */
 
-package org.gradle.internal.reflect;
+package org.gradle.internal.action;
 
 import org.gradle.api.Action;
+import org.gradle.api.internal.changedetection.state.isolation.Isolatable;
+import org.gradle.caching.internal.BuildCacheHasher;
+import org.gradle.internal.reflect.Instantiator;
+
+import javax.annotation.Nullable;
 
 public class InstantiatingAction<T> implements Action<T> {
+    public static final Isolatable<Object[]> NO_PARAMS = new Isolatable<Object[]>() {
+        @Override
+        public Object[] isolate() {
+            return new Object[0];
+        }
+
+        @Nullable
+        @Override
+        public <S> Isolatable<S> coerce(Class<S> type) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void appendToHasher(BuildCacheHasher hasher) {
+            throw new UnsupportedOperationException();
+        }
+    };
+
     private final Class<? extends Action<T>> rule;
-    private final Object[] params;
+    private final Isolatable<Object[]> params;
     private final Instantiator instantiator;
     private final ExceptionHandler<T> exceptionHandler;
 
-    public InstantiatingAction(Class<? extends Action<T>> rule, Object[] params, Instantiator instantiator, ExceptionHandler<T> exceptionHandler) {
+    public InstantiatingAction(Class<? extends Action<T>> rule, Isolatable<Object[]> params, Instantiator instantiator, ExceptionHandler<T> exceptionHandler) {
         this.rule = rule;
         this.params = params;
         this.instantiator = instantiator;
@@ -34,7 +57,7 @@ public class InstantiatingAction<T> implements Action<T> {
     @Override
     public void execute(T target) {
         try {
-            Action<T> instance = instantiator.newInstance(rule, params);
+            Action<T> instance = instantiator.newInstance(rule, params.isolate());
             instance.execute(target);
         } catch (Throwable t) {
             exceptionHandler.handleException(target, t);

@@ -25,7 +25,8 @@ import org.gradle.api.attributes.AttributeDisambiguationRule;
 import org.gradle.api.attributes.DisambiguationRuleChain;
 import org.gradle.api.attributes.MultipleCandidatesDetails;
 import org.gradle.api.internal.DefaultActionConfiguration;
-import org.gradle.internal.reflect.InstantiatingAction;
+import org.gradle.api.internal.changedetection.state.isolation.IsolatableFactory;
+import org.gradle.internal.action.InstantiatingAction;
 import org.gradle.internal.reflect.Instantiator;
 import org.gradle.model.internal.type.ModelType;
 
@@ -37,21 +38,23 @@ public class DefaultDisambiguationRuleChain<T> implements DisambiguationRuleChai
     private static final Object[] NO_PARAMS = new Object[0];
     private final List<Action<? super MultipleCandidatesDetails<T>>> rules = Lists.newArrayList();
     private final Instantiator instantiator;
+    private final IsolatableFactory isolatableFactory;
 
-    public DefaultDisambiguationRuleChain(Instantiator instantiator) {
+    public DefaultDisambiguationRuleChain(Instantiator instantiator, IsolatableFactory isolatableFactory) {
         this.instantiator = instantiator;
+        this.isolatableFactory = isolatableFactory;
     }
 
     @Override
     public void add(final Class<? extends AttributeDisambiguationRule<T>> rule, Action<? super ActionConfiguration> configureAction) {
         DefaultActionConfiguration configuration = new DefaultActionConfiguration();
         configureAction.execute(configuration);
-        this.rules.add(new InstantiatingAction<MultipleCandidatesDetails<T>>(rule, configuration.getParams(), instantiator, new ExceptionHandler<T>(rule)));
+        this.rules.add(new InstantiatingAction<MultipleCandidatesDetails<T>>(rule, isolatableFactory.isolate(configuration.getParams()), instantiator, new ExceptionHandler<T>(rule)));
     }
 
     @Override
     public void add(final Class<? extends AttributeDisambiguationRule<T>> rule) {
-        this.rules.add(new InstantiatingAction<MultipleCandidatesDetails<T>>(rule, NO_PARAMS, instantiator, new ExceptionHandler<T>(rule)));
+        this.rules.add(new InstantiatingAction<MultipleCandidatesDetails<T>>(rule, InstantiatingAction.NO_PARAMS, instantiator, new ExceptionHandler<T>(rule)));
     }
 
     @Override
