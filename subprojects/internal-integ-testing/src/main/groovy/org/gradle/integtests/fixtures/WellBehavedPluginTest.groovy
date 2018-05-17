@@ -100,7 +100,6 @@ abstract class WellBehavedPluginTest extends AbstractIntegrationSpec {
             'java-library-distribution',
             'distribution',
             'play-application',
-            'build-dashboard',
         ])
 
         applyPlugin()

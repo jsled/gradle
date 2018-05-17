@@ -16,7 +16,11 @@
 
 package org.gradle.api.reporting.plugins;
 
-import org.gradle.api.*;
+import org.gradle.api.Action;
+import org.gradle.api.Incubating;
+import org.gradle.api.Plugin;
+import org.gradle.api.Project;
+import org.gradle.api.Task;
 import org.gradle.api.internal.ConventionMapping;
 import org.gradle.api.internal.plugins.DslObject;
 import org.gradle.api.plugins.ReportingBasePlugin;
@@ -38,37 +42,41 @@ public class BuildDashboardPlugin implements Plugin<Project> {
     public void apply(final Project project) {
         project.getPluginManager().apply(ReportingBasePlugin.class);
 
-        final GenerateBuildDashboard buildDashboardTask = project.getTasks().create(BUILD_DASHBOARD_TASK_NAME, GenerateBuildDashboard.class);
-        buildDashboardTask.setDescription("Generates a dashboard of all the reports produced by this build.");
-        buildDashboardTask.setGroup("reporting");
+        project.getTasks().createLater(BUILD_DASHBOARD_TASK_NAME, GenerateBuildDashboard.class, new Action<GenerateBuildDashboard>() {
+            @Override
+            public void execute(final GenerateBuildDashboard buildDashboardTask) {
+                buildDashboardTask.setDescription("Generates a dashboard of all the reports produced by this build.");
+                buildDashboardTask.setGroup("reporting");
 
-        DirectoryReport htmlReport = buildDashboardTask.getReports().getHtml();
-        ConventionMapping htmlReportConventionMapping = new DslObject(htmlReport).getConventionMapping();
-        htmlReportConventionMapping.map("destination", new Callable<Object>() {
-            public Object call() throws Exception {
-                return project.getExtensions().getByType(ReportingExtension.class).file("buildDashboard");
+                DirectoryReport htmlReport = buildDashboardTask.getReports().getHtml();
+                ConventionMapping htmlReportConventionMapping = new DslObject(htmlReport).getConventionMapping();
+                htmlReportConventionMapping.map("destination", new Callable<Object>() {
+                    public Object call() throws Exception {
+                        return project.getExtensions().getByType(ReportingExtension.class).file("buildDashboard");
+                    }
+                });
+
+                Action<Task> captureReportingTasks = new Action<Task>() {
+                    public void execute(Task task) {
+                        if (!(task instanceof Reporting)) {
+                            return;
+                        }
+
+                        Reporting reporting = (Reporting) task;
+
+                        buildDashboardTask.aggregate(reporting);
+
+                        if (!task.equals(buildDashboardTask)) {
+                            task.finalizedBy(buildDashboardTask);
+                        }
+                    }
+                };
+
+                for (Project aProject : project.getAllprojects()) {
+                    aProject.getTasks().all(captureReportingTasks);
+                }
             }
         });
-
-        Action<Task> captureReportingTasks = new Action<Task>() {
-            public void execute(Task task) {
-                if (!(task instanceof Reporting)) {
-                    return;
-                }
-
-                Reporting reporting = (Reporting) task;
-
-                buildDashboardTask.aggregate(reporting);
-
-                if (!task.equals(buildDashboardTask)) {
-                    task.finalizedBy(buildDashboardTask);
-                }
-            }
-        };
-
-        for (Project aProject : project.getAllprojects()) {
-            aProject.getTasks().all(captureReportingTasks);
-        }
     }
 
 }
