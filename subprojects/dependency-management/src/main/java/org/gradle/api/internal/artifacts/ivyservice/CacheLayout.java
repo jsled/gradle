@@ -24,7 +24,7 @@ public enum CacheLayout {
     FILE_STORE(ROOT, "files", 1),
     META_DATA(ROOT, "metadata", 58),
     RESOURCES(ROOT, "resources", 1),
-    TRANSFORMS(null, "transforms", 1),
+    TRANSFORMS(null, "transforms", 2),
     TRANSFORMS_META_DATA(TRANSFORMS, "metadata", 1),
     TRANSFORMS_STORE(TRANSFORMS, "files", 1);
 
