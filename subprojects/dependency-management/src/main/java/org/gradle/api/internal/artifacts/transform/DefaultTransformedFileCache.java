@@ -30,7 +30,6 @@ import org.gradle.cache.PersistentCache;
 import org.gradle.cache.PersistentIndexedCache;
 import org.gradle.cache.PersistentIndexedCacheParameters;
 import org.gradle.cache.internal.FixedAgeOldestCacheCleanup;
-import org.gradle.cache.internal.NonReservedCacheFileFilter;
 import org.gradle.cache.internal.ProducerGuard;
 import org.gradle.caching.internal.DefaultBuildCacheHasher;
 import org.gradle.initialization.RootBuildLifecycleListener;
@@ -52,7 +51,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -277,6 +275,7 @@ public class DefaultTransformedFileCache implements TransformedFileCache, Stoppa
 
         @Override
         protected File[] findEligibleFiles(PersistentCache persistentCache) {
+            /*
             List<File> result = new ArrayList<File>();
             FileFilter filter = new NonReservedCacheFileFilter(persistentCache);
             for (File fileInBaseDir : listFiles(filesOutputDirectory, filter)) {
@@ -285,6 +284,8 @@ public class DefaultTransformedFileCache implements TransformedFileCache, Stoppa
                 }
             }
             return result.toArray(new File[0]);
+            */
+            return new File[0];
         }
 
         private List<File> listFiles(File baseDir, FileFilter filter) {
