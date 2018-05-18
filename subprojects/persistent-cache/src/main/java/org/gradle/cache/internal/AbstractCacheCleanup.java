@@ -62,6 +62,7 @@ public abstract class AbstractCacheCleanup implements CleanupAction {
             try {
                 long size = file.length();
                 if (GFileUtils.deleteQuietly(file)) {
+                    LOGGER.debug("Deleted file {}", file);
                     removedSize += size;
                 }
             } catch (Exception e) {
